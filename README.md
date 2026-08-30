@@ -8,20 +8,20 @@ Players are secretly assigned roles each round — most are **Investigators**, o
 
 ## Tech Stack
 
-| Layer | Technology |
-| ------- | ------------ |
-| Frontend | React 18 + Vite + TypeScript + Tailwind CSS |
-| Animations | Framer Motion |
-| State | Zustand + React Query |
-| Backend | Node.js + Express + TypeScript |
-| Real-Time | Socket.io |
-| Database | PostgreSQL (Supabase) + Drizzle ORM |
-| Cache | Redis (ioredis) |
-| Auth | Custom JWT (expandable to Supabase Auth) |
-| Media | Cloudinary |
-| Styling | Tailwind CSS |
-| Testing | Vitest |
-| Monorepo | npm workspaces |
+| Layer      | Technology                                  |
+| ---------- | ------------------------------------------- |
+| Frontend   | React 18 + Vite + TypeScript + Tailwind CSS |
+| Animations | Framer Motion                               |
+| State      | Zustand + React Query                       |
+| Backend    | Node.js + Express + TypeScript              |
+| Real-Time  | Socket.io                                   |
+| Database   | PostgreSQL (Supabase) + Drizzle ORM         |
+| Cache      | Redis (ioredis)                             |
+| Auth       | Custom JWT (expandable to Supabase Auth)    |
+| Media      | Cloudinary                                  |
+| Styling    | Tailwind CSS                                |
+| Testing    | Vitest                                      |
+| Monorepo   | npm workspaces                              |
 
 ## Project Structure
 
