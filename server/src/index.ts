@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import matchRoutes from "./routes/match.js";
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ const io = new Server(httpServer, {
 app.use(helmet());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:5173" }));
 app.use(express.json());
+
+// API Routes
+app.use("/api", matchRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
