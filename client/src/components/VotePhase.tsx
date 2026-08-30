@@ -32,9 +32,11 @@ export default function VotePhase() {
                   : "border-zinc-700 bg-zinc-800 hover:border-zinc-600"
               }`}
             >
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-2 ${
-                selected === p.id ? "bg-red-600" : "bg-zinc-700"
-              }`}>
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-2 ${
+                  selected === p.id ? "bg-red-600" : "bg-zinc-700"
+                }`}
+              >
                 {p.username[0].toUpperCase()}
               </div>
               <p className="font-semibold text-center text-sm">{p.username}</p>

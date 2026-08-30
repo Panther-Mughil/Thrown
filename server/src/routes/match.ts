@@ -1,5 +1,14 @@
 import { Router } from "express";
-import { createMatch, joinMatch, startMatch, getMatchState, getMatchByRoomCode, submitVote, tallyVotes, createNextRound } from "../game/engine";
+import {
+  createMatch,
+  joinMatch,
+  startMatch,
+  getMatchState,
+  getMatchByRoomCode,
+  submitVote,
+  tallyVotes,
+  createNextRound,
+} from "../game/engine";
 
 const router = Router();
 
@@ -34,7 +43,14 @@ router.post("/matches/:id/start", (req, res) => {
   const { hostId } = req.body;
   const state = startMatch(req.params.id, hostId);
   if (!state) return res.status(400).json({ success: false, error: "Cannot start match" });
-  res.json({ success: true, data: { match: state.match, currentRound: state.currentRound, roles: state.roles.get(state.currentRound?.id || "") || [] } });
+  res.json({
+    success: true,
+    data: {
+      match: state.match,
+      currentRound: state.currentRound,
+      roles: state.roles.get(state.currentRound?.id || "") || [],
+    },
+  });
 });
 
 // Submit vote
@@ -57,7 +73,10 @@ router.post("/matches/:id/tally", (req, res) => {
 router.post("/matches/:id/next-round", (req, res) => {
   const state = createNextRound(req.params.id);
   if (!state) return res.status(400).json({ success: false, error: "Cannot create next round" });
-  res.json({ success: true, data: { round: state.currentRound, roles: state.roles.get(state.currentRound?.id || "") || [] } });
+  res.json({
+    success: true,
+    data: { round: state.currentRound, roles: state.roles.get(state.currentRound?.id || "") || [] },
+  });
 });
 
 export default router;

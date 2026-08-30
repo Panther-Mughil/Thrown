@@ -41,7 +41,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
-        <h1 className="text-5xl font-bold text-center mb-2 text-purple-400 tracking-tight">THROWN</h1>
+        <h1 className="text-5xl font-bold text-center mb-2 text-purple-400 tracking-tight">
+          THROWN
+        </h1>
         <p className="text-zinc-500 text-center mb-8 text-sm">Social Deduction Game</p>
 
         <input
@@ -53,9 +55,7 @@ export default function HomePage() {
           className="w-full p-3 mb-6 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors"
         />
 
-        {error && (
-          <p className="text-red-400 text-sm mb-4 text-center">{error}</p>
-        )}
+        {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
 
         <div className="space-y-4">
           <button

@@ -68,7 +68,9 @@ export default function RevealPhase() {
                 : "bg-red-900/30 border-2 border-red-500"
             }`}
           >
-            <p className="text-sm text-zinc-300 mb-2">{eliminatedPlayer.username} was eliminated!</p>
+            <p className="text-sm text-zinc-300 mb-2">
+              {eliminatedPlayer.username} was eliminated!
+            </p>
             <p className="text-3xl mb-2">{isMask ? "🎭" : "🔍"}</p>
             <p className="text-xl font-bold mb-2">{isMask ? "The Mask" : "Investigator"}</p>
             <p className={isMask ? "text-green-400" : "text-red-400"}>

@@ -1,5 +1,66 @@
 import { create } from "zustand";
-import type { Match, Round, Role, RevealResult } from "@shared/types";
+// Types imported from shared package
+type GameEdition = "core" | "extended" | "chaos";
+type GamePhase = "idle" | "assignment" | "discussion" | "vote" | "tiebreak" | "reveal" | "scoreboard" | "match_end";
+type MatchStatus = "lobby" | "starting" | "in_progress" | "completed";
+type RoleType = "mask" | "special_investigator" | "investigator";
+type CharacterName = "the_artist" | "victor" | "nova_reyes" | "mikaela" | "kate" | "tamara" | "dmw" | "auditor" | "lucky_charm" | "volta_agent";
+
+export interface Match {
+  id: string;
+  hostId: string;
+  roomCode: string;
+  edition: GameEdition;
+  maxPlayers: number;
+  bestOf: 5 | 10;
+  status: MatchStatus;
+  createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+export interface Round {
+  id: string;
+  matchId: string;
+  roundNumber: number;
+  status: GamePhase;
+  discussionTimer: number;
+  createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+export interface Role {
+  id: string;
+  roundId: string;
+  userId: string;
+  roleType: RoleType;
+  characterName: CharacterName;
+  hasStrongClue: boolean;
+  hasWeakClue: boolean;
+  abilityUsed: boolean;
+}
+
+export interface Vote {
+  id: string;
+  roundId: string;
+  voterId: string;
+  targetId: string;
+  isValid: boolean;
+}
+
+export interface VoteResult {
+  voterId: string;
+  targetId: string;
+  weight: number;
+}
+
+export interface RevealResult {
+  votes: VoteResult[];
+  eliminated?: { userId: string; role: Role };
+  tiebreak: boolean;
+  tiebreakWinner?: string;
+}
 
 const API = "http://localhost:3001/api";
 

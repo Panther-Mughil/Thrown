@@ -46,9 +46,7 @@ export default function RoleCard() {
             <div className="text-center backface-hidden">
               <p className="text-sm text-zinc-300 mb-2">You are</p>
               <p className="text-4xl mb-4">{isMask ? "🎭" : "🔍"}</p>
-              <p className="text-xl font-bold mb-4">
-                {isMask ? "The Mask" : "Investigator"}
-              </p>
+              <p className="text-xl font-bold mb-4">{isMask ? "The Mask" : "Investigator"}</p>
               <p className="text-sm text-zinc-300 leading-relaxed">
                 {isMask
                   ? "Blend in and survive the vote. Don't get caught!"

@@ -16,14 +16,20 @@ export default function Lobby() {
         </div>
 
         <div className="space-y-2 mb-6">
-          <p className="text-zinc-400 text-sm">Players ({players.length}/{match?.maxPlayers || 5})</p>
+          <p className="text-zinc-400 text-sm">
+            Players ({players.length}/{match?.maxPlayers || 5})
+          </p>
           {players.map((p) => (
             <div key={p.id} className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg">
               <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
                 {p.username[0].toUpperCase()}
               </div>
               <span className="flex-1">{p.username}</span>
-              {p.isHost && <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">Host</span>}
+              {p.isHost && (
+                <span className="text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">
+                  Host
+                </span>
+              )}
             </div>
           ))}
         </div>

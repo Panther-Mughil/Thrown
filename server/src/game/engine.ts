@@ -14,7 +14,12 @@ export interface MatchState {
   wins: Map<string, number>;
 }
 
-export function createMatch(hostId: string, hostUsername: string, maxPlayers: number, bestOf: 5 | 10): MatchState {
+export function createMatch(
+  hostId: string,
+  hostUsername: string,
+  maxPlayers: number,
+  bestOf: 5 | 10,
+): MatchState {
   const roomCode = generateRoomCode();
   const match: Match = {
     id: crypto.randomUUID(),
@@ -76,7 +81,7 @@ function createRound(state: MatchState, roundNumber: number): Round {
   // Assign roles
   const roles = assignRoles(state.players);
   // Set roundId for all roles
-  roles.forEach(r => r.roundId = round.id);
+  roles.forEach((r) => (r.roundId = round.id));
   state.roles.set(round.id, roles);
   state.rounds.push(round);
 
@@ -116,12 +121,17 @@ function assignRoles(players: { id: string; username: string }[]): Role[] {
   return roles;
 }
 
-export function submitVote(matchId: string, roundId: string, voterId: string, targetId: string): boolean {
+export function submitVote(
+  matchId: string,
+  roundId: string,
+  voterId: string,
+  targetId: string,
+): boolean {
   const state = matches.get(matchId);
   if (!state) return false;
 
   const votes = state.votes.get(roundId) || [];
-  if (votes.some(v => v.voterId === voterId)) return false;
+  if (votes.some((v) => v.voterId === voterId)) return false;
 
   votes.push({
     id: crypto.randomUUID(),
@@ -172,7 +182,7 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
   }
 
   // Get eliminated player's role
-  const eliminatedRole = roles.find(r => r.userId === eliminated);
+  const eliminatedRole = roles.find((r) => r.userId === eliminated);
 
   // Update scores
   if (eliminatedRole) {
@@ -185,7 +195,7 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
       }
     } else {
       // Mask survives
-      const maskRole = roles.find(r => r.roleType === "mask");
+      const maskRole = roles.find((r) => r.roleType === "mask");
       if (maskRole) {
         state.scores.set(maskRole.userId, (state.scores.get(maskRole.userId) || 0) + 200);
       }
@@ -193,8 +203,9 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
   }
 
   return {
-    votes: votes.map(v => ({ voterId: v.voterId, targetId: v.targetId, weight: 1 })),
-    eliminated: eliminated && eliminatedRole ? { userId: eliminated, role: eliminatedRole } : undefined,
+    votes: votes.map((v) => ({ voterId: v.voterId, targetId: v.targetId, weight: 1 })),
+    eliminated:
+      eliminated && eliminatedRole ? { userId: eliminated, role: eliminatedRole } : undefined,
     tiebreak,
     tiebreakWinner: tiebreak ? eliminated || undefined : undefined,
   };

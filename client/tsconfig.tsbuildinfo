@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/DiscussionPhase.tsx","./src/components/Lobby.tsx","./src/components/RevealPhase.tsx","./src/components/RoleCard.tsx","./src/components/Scoreboard.tsx","./src/components/VotePhase.tsx","./src/pages/GamePage.tsx","./src/pages/HomePage.tsx","./src/store/gameStore.ts","../shared/types.ts"],"version":"5.9.3"}

@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { useGameStore } from "../store/gameStore";
-import { PRESET_MESSAGES } from "@shared/types";
+const PRESET_MESSAGES = [
+  "I'm suspicious!",
+  "Trust me!",
+  "Who has a clue?",
+  "Vote wisely!",
+  "I'm an Investigator!",
+  "Check the clues!",
+  "Don't vote me out!",
+  "Something's off...",
+  "I have info!",
+  "Let's discuss!",
+] as const;
 
 export default function DiscussionPhase() {
   const { players, playerId, setPhase } = useGameStore();
@@ -36,10 +47,23 @@ export default function DiscussionPhase() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-4 bg-zinc-900 px-6 py-3 rounded-full border border-zinc-800">
             <div className="relative w-16 h-16">
-              <svg className="w-16 h-16 transform -rotate-90">
-                <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none" className="text-zinc-800" />
+              <svg className="w-16 h-16 transform -rotate-90" role="img" aria-label="Timer">
                 <circle
-                  cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="none"
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                  className="text-zinc-800"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
                   className="text-purple-500"
                   strokeDasharray={`${progress * circumference} ${circumference}`}
                   strokeLinecap="round"
@@ -56,12 +80,18 @@ export default function DiscussionPhase() {
         {/* Players */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
           {players.map((p) => (
-            <div key={p.id} className={`bg-zinc-900 p-4 rounded-xl border flex items-center gap-3 ${p.id === playerId ? "border-purple-500/50" : "border-zinc-800"}`}>
+            <div
+              key={p.id}
+              className={`bg-zinc-900 p-4 rounded-xl border flex items-center gap-3 ${p.id === playerId ? "border-purple-500/50" : "border-zinc-800"}`}
+            >
               <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-xl font-bold shrink-0">
                 {p.username[0].toUpperCase()}
               </div>
               <div>
-                <p className="font-semibold text-sm">{p.username}{p.id === playerId ? " (You)" : ""}</p>
+                <p className="font-semibold text-sm">
+                  {p.username}
+                  {p.id === playerId ? " (You)" : ""}
+                </p>
                 <p className="text-xs text-zinc-500">Discussing...</p>
               </div>
             </div>
@@ -87,6 +117,7 @@ export default function DiscussionPhase() {
             {PRESET_MESSAGES.map((msg) => (
               <button
                 key={msg}
+                type="button"
                 onClick={() => sendMessage(msg)}
                 className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-full text-sm text-zinc-300 transition-colors"
               >
