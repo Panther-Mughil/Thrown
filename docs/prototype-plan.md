@@ -62,9 +62,10 @@ Create the core game engine with these files:
 #### `server/src/game/types.ts`
 
 ```typescript
-export type GamePhase = 'lobby' | 'assignment' | 'discussion' | 'vote' | 'reveal' | 'scoreboard' | 'ended';
-export type RoleType = 'mask' | 'investigator';
-export type CharacterName = 'the-artist' | 'volta-agent';
+export type GamePhase =
+  "lobby" | "assignment" | "discussion" | "vote" | "reveal" | "scoreboard" | "ended";
+export type RoleType = "mask" | "investigator";
+export type CharacterName = "the-artist" | "volta-agent";
 
 export interface Player {
   id: string;
@@ -105,7 +106,7 @@ export interface Match {
   rounds: Round[];
   scores: Record<string, number>;
   wins: Record<string, number>;
-  status: 'lobby' | 'in-progress' | 'ended';
+  status: "lobby" | "in-progress" | "ended";
 }
 ```
 
@@ -323,4 +324,4 @@ thrown/
 
 ---
 
-*This prototype demonstrates the core deduction loop. Real-time sync, auth, and economy come later.*
+_This prototype demonstrates the core deduction loop. Real-time sync, auth, and economy come later._

@@ -21,7 +21,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "🚀 Starting servers..."
-echo "   Frontend: http://localhost:5173"
+echo "   Frontend: http://localhost:3000"
 echo "   Backend:  http://localhost:3001"
 echo ""
 echo "   Press Ctrl+C to stop all servers."

@@ -1,10 +1,28 @@
 import { create } from "zustand";
 // Types imported from shared package
 type GameEdition = "core" | "extended" | "chaos";
-type GamePhase = "idle" | "assignment" | "discussion" | "vote" | "tiebreak" | "reveal" | "scoreboard" | "match_end";
+type GamePhase =
+  | "idle"
+  | "assignment"
+  | "discussion"
+  | "vote"
+  | "tiebreak"
+  | "reveal"
+  | "scoreboard"
+  | "match_end";
 type MatchStatus = "lobby" | "starting" | "in_progress" | "completed";
 type RoleType = "mask" | "special_investigator" | "investigator";
-type CharacterName = "the_artist" | "victor" | "nova_reyes" | "mikaela" | "kate" | "tamara" | "dmw" | "auditor" | "lucky_charm" | "volta_agent";
+type CharacterName =
+  | "the_artist"
+  | "victor"
+  | "nova_reyes"
+  | "mikaela"
+  | "kate"
+  | "tamara"
+  | "dmw"
+  | "auditor"
+  | "lucky_charm"
+  | "volta_agent";
 
 export interface Match {
   id: string;
