@@ -78,6 +78,43 @@ interface RevealResult {
 
 const API = "/api";
 
+// ── Identity persistence (localStorage) ──────────────────
+const IDENTITY_KEY = "thrown_identity";
+
+interface StoredIdentity {
+  playerId: string;
+  playerName: string;
+  matchId: string;
+  roomCode: string;
+}
+
+function saveIdentity(id: StoredIdentity) {
+  try {
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(id));
+  } catch {
+    // storage unavailable — non-fatal for prototype
+  }
+}
+
+function clearIdentityStorage() {
+  try {
+    localStorage.removeItem(IDENTITY_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function loadIdentity(): StoredIdentity | null {
+  try {
+    const raw = localStorage.getItem(IDENTITY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredIdentity;
+    return parsed.playerId && parsed.matchId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 interface Player {
   id: string;
   username: string;
@@ -102,6 +139,8 @@ interface GameState {
   matchWinner: "investigators" | "masks" | null;
   investigatorWins: number;
   maskWins: number;
+  votesSubmitted: number;
+  votesRequired: number;
 
   // Actions
   setPlayer: (id: string, name: string) => void;
@@ -113,6 +152,8 @@ interface GameState {
   submitVote: (targetId: string) => Promise<void>;
   tallyVotes: () => Promise<void>;
   nextRound: () => Promise<void>;
+  sync: () => Promise<void>;
+  rejoinFromStorage: () => StoredIdentity | null;
   resetGame: () => void;
 }
 
@@ -134,12 +175,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   matchWinner: null,
   investigatorWins: 0,
   maskWins: 0,
+  votesSubmitted: 0,
+  votesRequired: 0,
 
   setPlayer: (id, name) => set({ playerId: id, playerName: name }),
   setPhase: (phase) => set({ phase }),
   setVotes: (votes) => set({ votes }),
 
-  resetGame: () =>
+  rejoinFromStorage: () => loadIdentity(),
+
+  resetGame: () => {
+    clearIdentityStorage();
     set({
       matchId: null,
       roomCode: null,
@@ -155,7 +201,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       matchWinner: null,
       investigatorWins: 0,
       maskWins: 0,
-    }),
+      votesSubmitted: 0,
+      votesRequired: 0,
+    });
+  },
 
   createRoom: async (maxPlayers, bestOf) => {
     const state = get();
@@ -178,6 +227,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         bestOf,
         players: [{ id: state.playerId, username: state.playerName, isHost: true }],
         phase: "lobby",
+      });
+      saveIdentity({
+        playerId: state.playerId,
+        playerName: state.playerName,
+        matchId: data.data.match.id,
+        roomCode: data.data.roomCode,
       });
     }
   },
@@ -205,6 +260,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           isHost: p.isHost,
         })),
         phase: "lobby",
+      });
+      saveIdentity({
+        playerId: state.playerId,
+        playerName: state.playerName,
+        matchId: data.data.match.id,
+        roomCode,
       });
     }
   },
@@ -300,6 +361,45 @@ export const useGameStore = create<GameState>((set, get) => ({
         phase: "assignment",
         roundNumber: state.roundNumber + 1,
       });
+    }
+  },
+
+  sync: async () => {
+    const state = get();
+    if (!state.matchId || !state.playerId) return;
+    try {
+      const res = await fetch(`${API}/matches/${state.matchId}/sync?userId=${state.playerId}`);
+      const data = await res.json();
+      if (!data.success) return;
+      const s = data.data;
+
+      const updates: Record<string, unknown> = {
+        players: s.players,
+        scores: s.scores,
+        investigatorWins: s.investigatorWins,
+        maskWins: s.maskWins,
+        matchWinner: s.matchWinner,
+        votesSubmitted: s.votesSubmitted,
+        votesRequired: s.votesRequired,
+      };
+
+      // Round changed (host started, or next round created elsewhere)
+      if (s.currentRound) {
+        if (state.currentRound?.id !== s.currentRound.id) {
+          updates.currentRound = s.currentRound;
+          updates.roundNumber = s.currentRound.roundNumber;
+          updates.votes = null;
+        }
+        if (s.myRole && (!state.myRole || state.myRole.id !== s.myRole.id)) {
+          updates.myRole = s.myRole;
+        }
+      } else if (state.currentRound) {
+        updates.currentRound = null;
+      }
+
+      set(updates);
+    } catch {
+      // transient network error — next poll retries
     }
   },
 }));

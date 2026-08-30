@@ -8,6 +8,7 @@ import {
   submitVote,
   tallyVotes,
   createNextRound,
+  toSyncPayload,
 } from "../game/engine.js";
 
 const router = Router();
@@ -36,6 +37,14 @@ router.get("/matches/:id", (req, res) => {
   const state = getMatchState(req.params.id);
   if (!state) return res.status(404).json({ success: false, error: "Match not found" });
   res.json({ success: true, data: state });
+});
+
+// Sync endpoint — sanitized state for polling clients (anti-cheat)
+router.get("/matches/:id/sync", (req, res) => {
+  const state = getMatchState(req.params.id);
+  if (!state) return res.status(404).json({ success: false, error: "Match not found" });
+  const userId = String(req.query.userId || "");
+  res.json({ success: true, data: toSyncPayload(state, userId) });
 });
 
 // Start match

@@ -2,18 +2,35 @@ import { useState } from "react";
 import { useGameStore } from "../store/gameStore";
 import { useNavigate } from "react-router-dom";
 
+function generatePlayerId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `player-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function HomePage() {
   const [username, setUsername] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
-  const { setPlayer, createRoom, joinRoom } = useGameStore();
+  const { setPlayer, createRoom, joinRoom, setPhase } = useGameStore();
   const navigate = useNavigate();
+
+  // Rejoin from persisted identity
+  const savedIdentity = useGameStore.getState().rejoinFromStorage();
+
+  const handleRejoin = () => {
+    if (!savedIdentity) return;
+    setPlayer(savedIdentity.playerId, savedIdentity.playerName);
+    setPhase("lobby");
+    navigate("/game");
+  };
 
   const handleCreate = async () => {
     if (!username.trim()) return;
     setError("");
-    const playerId = `player-${Date.now()}`;
+    const playerId = generatePlayerId();
     setPlayer(playerId, username.trim());
     setIsCreating(true);
     try {
@@ -28,7 +45,7 @@ export default function HomePage() {
   const handleJoin = async () => {
     if (!username.trim() || !roomCode.trim()) return;
     setError("");
-    const playerId = `player-${Date.now()}`;
+    const playerId = generatePlayerId();
     setPlayer(playerId, username.trim());
     try {
       await joinRoom(roomCode.toUpperCase());
@@ -56,6 +73,15 @@ export default function HomePage() {
         />
 
         {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
+
+        {savedIdentity && (
+          <button
+            onClick={handleRejoin}
+            className="w-full p-3 mb-4 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition-colors"
+          >
+            Rejoin Lobby ({savedIdentity.roomCode})
+          </button>
+        )}
 
         <div className="space-y-4">
           <button

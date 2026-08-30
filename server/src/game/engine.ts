@@ -239,6 +239,35 @@ export function getMatchState(matchId: string): MatchState | null {
   return matches.get(matchId) || null;
 }
 
+/**
+ * Sanitized sync payload for a single client.
+ * Exposes counts/aggregates only — never other players' roles or vote contents.
+ */
+export function toSyncPayload(state: MatchState, userId: string) {
+  return {
+    match: state.match,
+    players: state.players,
+    currentRound: state.currentRound
+      ? {
+          id: state.currentRound.id,
+          roundNumber: state.currentRound.roundNumber,
+          discussionTimer: state.currentRound.discussionTimer,
+          status: state.currentRound.status,
+        }
+      : null,
+    scores: Object.fromEntries(state.scores),
+    investigatorWins: state.investigatorWins,
+    maskWins: state.maskWins,
+    matchWinner: state.matchWinner,
+    votesSubmitted: state.currentRound ? (state.votes.get(state.currentRound.id)?.length ?? 0) : 0,
+    votesRequired: state.players.length,
+    myRole:
+      (state.currentRound ? (state.roles.get(state.currentRound.id) ?? []) : []).find(
+        (r) => r.userId === userId,
+      ) ?? null,
+  };
+}
+
 export function getMatchByRoomCode(roomCode: string): MatchState | null {
   for (const state of matches.values()) {
     if (state.match.roomCode === roomCode) return state;
