@@ -132,7 +132,9 @@ interface GameState {
   myRole: Role | null;
   allRoles: Role[];
   phase: string;
+  timeRemaining: number;
   votes: RevealResult | null;
+  hasVoted: boolean;
   scores: Record<string, number>;
   roundNumber: number;
   bestOf: number;
@@ -168,7 +170,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   myRole: null,
   allRoles: [],
   phase: "idle",
+  timeRemaining: 0,
   votes: null,
+  hasVoted: false,
   scores: {},
   roundNumber: 1,
   bestOf: 5,
@@ -195,7 +199,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       myRole: null,
       allRoles: [],
       phase: "idle",
+      timeRemaining: 0,
       votes: null,
+      hasVoted: false,
       scores: {},
       roundNumber: 1,
       matchWinner: null,
@@ -286,14 +292,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         allRoles: roles,
         myRole,
         phase: "assignment",
+        timeRemaining: 5,
         roundNumber: 1,
+        votes: null,
+        hasVoted: false,
       });
     }
   },
 
   submitVote: async (targetId) => {
     const state = get();
-    await fetch(`${API}/matches/${state.matchId}/vote`, {
+    const res = await fetch(`${API}/matches/${state.matchId}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -302,45 +311,24 @@ export const useGameStore = create<GameState>((set, get) => ({
         targetId,
       }),
     });
-    set({ phase: "waiting" });
+    const data = await res.json();
+    if (data.success) {
+      // Mark locally that we've voted; the server still owns the phase.
+      set({ hasVoted: true });
+      // Immediately sync to pick up the server's vote count / possible auto-reveal.
+      await get().sync();
+    }
   },
 
   tallyVotes: async () => {
+    // Manual force-reveal fallback (host). Results come from sync, not local math.
     const state = get();
-    const res = await fetch(`${API}/matches/${state.matchId}/tally`, {
+    await fetch(`${API}/matches/${state.matchId}/tally`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roundId: state.currentRound?.id }),
     });
-    const data = await res.json();
-    if (data.success) {
-      // Update scores
-      const newScores = { ...state.scores };
-      if (data.data.eliminated) {
-        if (data.data.eliminated.role?.roleType === "mask") {
-          // Investigators win
-          for (const role of state.allRoles) {
-            if (role.roleType === "investigator") {
-              newScores[role.userId] = (newScores[role.userId] || 0) + 150;
-            }
-          }
-        } else {
-          // Mask survives
-          const maskRole = state.allRoles.find((r) => r.roleType === "mask");
-          if (maskRole) {
-            newScores[maskRole.userId] = (newScores[maskRole.userId] || 0) + 200;
-          }
-        }
-      }
-      set({
-        votes: data.data,
-        scores: newScores,
-        matchWinner: data.data.matchWinner ?? null,
-        investigatorWins: data.data.investigatorWins ?? state.investigatorWins,
-        maskWins: data.data.maskWins ?? state.maskWins,
-        phase: "reveal",
-      });
-    }
+    await get().sync();
   },
 
   nextRound: async () => {
@@ -358,9 +346,12 @@ export const useGameStore = create<GameState>((set, get) => ({
         allRoles: roles,
         myRole,
         votes: null,
+        hasVoted: false,
         phase: "assignment",
+        timeRemaining: 5,
         roundNumber: state.roundNumber + 1,
       });
+      await get().sync();
     }
   },
 
@@ -373,7 +364,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!data.success) return;
       const s = data.data;
 
-      const updates: Record<string, unknown> = {
+      const updates: Partial<GameState> = {
+        match: s.match,
         players: s.players,
         scores: s.scores,
         investigatorWins: s.investigatorWins,
@@ -381,14 +373,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         matchWinner: s.matchWinner,
         votesSubmitted: s.votesSubmitted,
         votesRequired: s.votesRequired,
+        timeRemaining: s.timeRemaining,
+        hasVoted: s.hasVoted,
+        // Reveal result (null until server resolves the round)
+        votes: s.reveal,
       };
 
-      // Round changed (host started, or next round created elsewhere)
+      // Server-authoritative phase (server wins over local state)
+      updates.phase = s.match.status === "completed" ? "match_end" : s.phase;
+
+      // Round changed (start or next round created server-side)
       if (s.currentRound) {
         if (state.currentRound?.id !== s.currentRound.id) {
           updates.currentRound = s.currentRound;
           updates.roundNumber = s.currentRound.roundNumber;
           updates.votes = null;
+          updates.hasVoted = false;
         }
         if (s.myRole && (!state.myRole || state.myRole.id !== s.myRole.id)) {
           updates.myRole = s.myRole;

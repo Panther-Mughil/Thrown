@@ -48,7 +48,7 @@
      - reveal + matchWinner set → show match-end state on scoreboard
    - Keep local role/messages; never import other players' roles.
 
-4. **HomePage**: on mount, if an identity exists in localStorage → show "Rejoin: <roomCode>" button → navigates to `/game` and re-attaches via sync.
+4. **HomePage**: on mount, if an identity exists in localStorage → show "Rejoin: `<roomCode>`" button → navigates to `/game` and re-attaches via sync.
 
 5. **GamePage on mount with no identity** → redirect to `/`.
 

@@ -3,7 +3,7 @@ import { useGameStore } from "../store/gameStore";
 import { motion } from "framer-motion";
 
 export default function VotePhase() {
-  const { players, playerId, submitVote } = useGameStore();
+  const { players, playerId, submitVote, hasVoted, votesSubmitted, votesRequired } = useGameStore();
   const [selected, setSelected] = useState<string | null>(null);
   const otherPlayers = players.filter((p) => p.id !== playerId);
 
@@ -12,6 +12,24 @@ export default function VotePhase() {
       submitVote(selected);
     }
   };
+
+  // Already voted — show waiting state (server still owns the phase)
+  if (hasVoted) {
+    const remaining = Math.max(0, votesRequired - votesSubmitted);
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
+          <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-6" />
+          <p className="text-xl text-zinc-300 mb-2">Vote submitted!</p>
+          <p className="text-sm text-zinc-500 mb-6">
+            {remaining > 0
+              ? `Waiting for ${remaining} more vote${remaining === 1 ? "" : "s"}…`
+              : "All votes are in — revealing results…"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

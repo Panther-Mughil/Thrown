@@ -1,20 +1,8 @@
-import { useEffect, useRef } from "react";
 import { useGameStore } from "../store/gameStore";
 import { motion } from "framer-motion";
 
 export default function RevealPhase() {
-  const { votes, players, setPhase, setVotes, tallyVotes } = useGameStore();
-  const tallyingRef = useRef(false);
-
-  // Tally votes once on mount if results aren't loaded yet
-  useEffect(() => {
-    if (!votes && !tallyingRef.current) {
-      tallyingRef.current = true;
-      tallyVotes().finally(() => {
-        tallyingRef.current = false;
-      });
-    }
-  }, [votes, tallyVotes]);
+  const { votes, players, nextRound } = useGameStore();
 
   if (!votes) {
     return (
@@ -29,11 +17,6 @@ export default function RevealPhase() {
     : null;
 
   const isMask = votes.eliminated?.role?.roleType === "mask";
-
-  const handleContinue = () => {
-    setVotes(null);
-    setPhase("scoreboard");
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -106,7 +89,7 @@ export default function RevealPhase() {
         )}
 
         <button
-          onClick={handleContinue}
+          onClick={nextRound}
           className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
         >
           Continue

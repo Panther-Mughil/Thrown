@@ -10,20 +10,9 @@ import Scoreboard from "../components/Scoreboard";
 
 export default function GamePage() {
   const navigate = useNavigate();
-  const {
-    phase,
-    setPhase,
-    playerId,
-    matchId,
-    currentRound,
-    votes,
-    votesSubmitted,
-    votesRequired,
-    tallyVotes,
-  } = useGameStore();
+  const { phase, playerId, matchId, matchWinner, scores, players, resetGame } = useGameStore();
 
   const rejoinRef = useRef(false);
-  const votedRef = useRef(false);
 
   // Rejoin from localStorage on mount if we have no identity in memory
   useEffect(() => {
@@ -45,7 +34,7 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerId, matchId]);
 
-  // Polling loop — keeps all clients in sync (players joining, phase changes)
+  // Polling loop — keeps all clients in sync (players joining, phase changes, scores)
   useEffect(() => {
     if (!matchId || !playerId) return;
     const interval = setInterval(async () => {
@@ -54,45 +43,37 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [matchId, playerId]);
 
-  // Auto phase transitions derived from synced server state
-  useEffect(() => {
-    const store = useGameStore.getState();
-    const st = store;
-
-    // Auth check (identity vanished)
-    if (!st.playerId || !st.matchId) {
-      navigate("/");
-      return;
-    }
-
-    // Lobby → game started by host: switch to assignment
-    if (st.phase === "lobby" && st.match?.status === "in_progress" && st.currentRound) {
-      st.setPhase("assignment");
-      return;
-    }
-
-    // Round changed (start or next round propagated via poll)
-    if (st.currentRound && currentRound && st.currentRound.id !== currentRound.id) {
-      setPhase("assignment");
-      return;
-    }
-
-    // Auto-reveal once everyone has voted
-    if (
-      (st.phase === "waiting" || st.phase === "vote") &&
-      st.votes === null &&
-      st.votesSubmitted >= st.votesRequired &&
-      st.votesRequired > 0 &&
-      !votedRef.current
-    ) {
-      votedRef.current = true;
-      tallyVotes().finally(() => {
-        votedRef.current = false;
-      });
-      return;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, currentRound, votes, votesSubmitted, votesRequired]);
+  // Match-end screen (server-authoritative phase)
+  if (phase === "match_end") {
+    const sorted = [...players].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-lg text-center">
+          <h2 className="text-3xl font-bold mb-4">
+            {matchWinner === "investigators" ? "🔍 Investigators Win!" : "🎭 Masks Win!"}
+          </h2>
+          <div className="space-y-2 mb-6">
+            {sorted.map((p, i) => (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-zinc-800 rounded-lg">
+                <span className="text-zinc-500 w-6">{i + 1}</span>
+                <span className="flex-1 text-left">{p.username}</span>
+                <span className="font-bold">{scores[p.id] || 0} SD$</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              resetGame();
+              navigate("/");
+            }}
+            className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+          >
+            Play Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -100,24 +81,6 @@ export default function GamePage() {
       {phase === "assignment" && <RoleCard />}
       {phase === "discussion" && <DiscussionPhase />}
       {phase === "vote" && <VotePhase />}
-      {phase === "waiting" && (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="text-center bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
-            <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-6" />
-            <p className="text-xl text-zinc-300 mb-2">Waiting for other players...</p>
-            <p className="text-sm text-zinc-500 mb-6">
-              Your vote has been submitted. Once everyone has voted, the results reveal
-              automatically.
-            </p>
-            <button
-              onClick={tallyVotes}
-              className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
-            >
-              Reveal Votes
-            </button>
-          </div>
-        </div>
-      )}
       {phase === "reveal" && <RevealPhase />}
       {phase === "scoreboard" && <Scoreboard />}
     </div>

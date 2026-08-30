@@ -1,25 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useGameStore } from "../store/gameStore";
 import { motion } from "framer-motion";
 
 export default function RoleCard() {
-  const { myRole, setPhase, roundNumber } = useGameStore();
+  const { myRole, roundNumber } = useGameStore();
   const [isRevealed, setIsRevealed] = useState(false);
-  const [countdown, setCountdown] = useState(5);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(timer);
-          setPhase("discussion");
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [setPhase]);
 
   const isMask = myRole?.roleType === "mask";
 
@@ -65,7 +50,7 @@ export default function RoleCard() {
           )}
         </motion.div>
 
-        <p className="text-zinc-500 mt-6">Discussion starts in {countdown}s</p>
+        <p className="text-zinc-500 mt-6">Discussion starts shortly…</p>
       </div>
     </div>
   );

@@ -14,30 +14,30 @@ const PRESET_MESSAGES = [
 ] as const;
 
 export default function DiscussionPhase() {
-  const { players, playerId, setPhase } = useGameStore();
-  const [timeLeft, setTimeLeft] = useState(45);
+  const { players, playerId, timeRemaining, currentRound } = useGameStore();
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
+  const [displayTime, setDisplayTime] = useState(timeRemaining || 45);
+
+  // Animate a local countdown from the server-provided time. Never transition —
+  // the server is the only authority for phase changes.
+  useEffect(() => {
+    setDisplayTime(timeRemaining || 45);
+  }, [timeRemaining]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timer);
-          setPhase("vote");
-          return 0;
-        }
-        return t - 1;
-      });
+      setDisplayTime((t) => (t > 0 ? t - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, [setPhase]);
+  }, []);
 
   const currentPlayer = players.find((p) => p.id === playerId);
   const sendMessage = (msg: string) => {
     setMessages((prev) => [...prev, { sender: currentPlayer?.username || "You", text: msg }]);
   };
 
-  const progress = timeLeft / 45;
+  const totalTime = currentRound?.discussionTimer || 45;
+  const progress = displayTime / totalTime;
   const circumference = 2 * Math.PI * 54;
 
   return (
@@ -70,7 +70,7 @@ export default function DiscussionPhase() {
                 />
               </svg>
               <span className="absolute inset-0 flex items-center justify-center text-xl font-bold">
-                {timeLeft}
+                {displayTime}
               </span>
             </div>
             <span className="text-zinc-400 hidden sm:inline">Discussion Phase</span>

@@ -3,6 +3,15 @@ import type { Match, Round, Role, Vote, RevealResult } from "@shared/types";
 // In-memory storage for prototype
 const matches = new Map<string, MatchState>();
 
+// Phase durations (seconds)
+const PHASE_DURATIONS = {
+  assignment: 5,
+  vote: 20,
+
+  reveal: 6,
+  scoreboard: 10,
+};
+
 export interface MatchState {
   match: Match;
   players: { id: string; username: string; isHost: boolean }[];
@@ -15,6 +24,8 @@ export interface MatchState {
   investigatorWins: number;
   maskWins: number;
   matchWinner: "investigators" | "masks" | null;
+  phaseStartedAt: number; // ms epoch when the current phase began
+  lastReveal: Map<string, RevealResult>; // roundId -> reveal result (only after resolve)
 }
 
 export function createMatch(
@@ -47,6 +58,8 @@ export function createMatch(
     investigatorWins: 0,
     maskWins: 0,
     matchWinner: null,
+    phaseStartedAt: Date.now(),
+    lastReveal: new Map(),
   };
 
   matches.set(match.id, state);
@@ -71,6 +84,7 @@ export function startMatch(matchId: string, hostId: string): MatchState | null {
 
   state.match.status = "in_progress";
   state.currentRound = createRound(state, 1);
+  state.phaseStartedAt = Date.now();
   return state;
 }
 
@@ -87,7 +101,9 @@ function createRound(state: MatchState, roundNumber: number): Round {
   // Assign roles
   const roles = assignRoles(state.players);
   // Set roundId for all roles
-  roles.forEach((r) => (r.roundId = round.id));
+  for (const r of roles) {
+    r.roundId = round.id;
+  }
   state.roles.set(round.id, roles);
   state.rounds.push(round);
 
@@ -136,6 +152,9 @@ export function submitVote(
   const state = matches.get(matchId);
   if (!state) return false;
 
+  // Do not allow voting outside the vote phase (server-authoritative)
+  if (state.currentRound?.status !== "vote") return false;
+
   const votes = state.votes.get(roundId) || [];
   if (votes.some((v) => v.voterId === voterId)) return false;
 
@@ -151,12 +170,45 @@ export function submitVote(
   return true;
 }
 
-export function tallyVotes(matchId: string, roundId: string): RevealResult | null {
-  const state = matches.get(matchId);
-  if (!state) return null;
+/**
+ * Server-authoritative phase transition. Updates the current round's status
+ * and resets the phase clock.
+ */
+function setPhase(state: MatchState, phase: Round["status"]): void {
+  if (state.currentRound) {
+    state.currentRound.status = phase;
+  }
+  state.phaseStartedAt = Date.now();
+}
 
-  const votes = state.votes.get(roundId) || [];
-  const roles = state.roles.get(roundId) || [];
+function getPhaseDuration(state: MatchState): number {
+  if (!state.currentRound) return 0;
+  switch (state.currentRound.status) {
+    case "assignment":
+      return PHASE_DURATIONS.assignment;
+    case "discussion":
+      return state.currentRound.discussionTimer;
+    case "vote":
+      return PHASE_DURATIONS.vote;
+    case "reveal":
+      return PHASE_DURATIONS.reveal;
+    case "scoreboard":
+      return PHASE_DURATIONS.scoreboard;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Server-side tally. Counts votes, applies tiebreak, updates scores/wins,
+ * stores the reveal result, and moves to the reveal phase.
+ */
+function resolveRound(state: MatchState): void {
+  const round = state.currentRound;
+  if (!round) return;
+
+  const votes = state.votes.get(round.id) || [];
+  const roles = state.roles.get(round.id) || [];
 
   // Count votes
   const voteCounts = new Map<string, number>();
@@ -185,6 +237,7 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
       count === maxVotes ? [playerId] : [],
     );
     eliminated = tied[Math.floor(Math.random() * tied.length)];
+    tiebreak = tied.length > 1;
   }
 
   // Get eliminated player's role
@@ -214,7 +267,9 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
     }
   }
 
-  // Match win check: first side to reach majority wins
+  // Match win check: first side to reach majority wins.
+  // NOTE: do NOT mark the match "completed" yet — the reveal and scoreboard
+  // phases still need to run. Completion is applied when the scoreboard expires.
   const winThreshold = Math.ceil(state.match.bestOf / 2);
   if (state.investigatorWins >= winThreshold) {
     state.matchWinner = "investigators";
@@ -222,7 +277,7 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
     state.matchWinner = "masks";
   }
 
-  return {
+  const reveal: RevealResult = {
     votes: votes.map((v) => ({ voterId: v.voterId, targetId: v.targetId, weight: 1 })),
     eliminated:
       eliminated && eliminatedRole ? { userId: eliminated, role: eliminatedRole } : undefined,
@@ -233,6 +288,41 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
     investigatorWins: state.investigatorWins,
     maskWins: state.maskWins,
   };
+
+  state.lastReveal.set(round.id, reveal);
+  setPhase(state, "reveal");
+}
+
+/**
+ * Lazy poll-driven phase progression. Called on every sync/action so the
+ * server is always the authority for what phase everyone is in.
+ */
+export function advanceTimedPhases(state: MatchState): void {
+  if (!state.currentRound) return;
+
+  const elapsed = (Date.now() - state.phaseStartedAt) / 1000;
+  const phase = state.currentRound.status;
+  const votesIn = state.currentRound ? (state.votes.get(state.currentRound.id)?.length ?? 0) : 0;
+
+  if (phase === "assignment" && elapsed >= PHASE_DURATIONS.assignment) {
+    setPhase(state, "discussion");
+  } else if (phase === "discussion" && elapsed >= state.currentRound.discussionTimer) {
+    setPhase(state, "vote");
+  } else if (
+    phase === "vote" &&
+    (elapsed >= PHASE_DURATIONS.vote || votesIn >= state.players.length)
+  ) {
+    resolveRound(state);
+  } else if (phase === "reveal" && elapsed >= PHASE_DURATIONS.reveal) {
+    setPhase(state, "scoreboard");
+  } else if (phase === "scoreboard" && elapsed >= PHASE_DURATIONS.scoreboard) {
+    if (state.matchWinner) {
+      state.match.status = "completed";
+      // Keep currentRound.status at "scoreboard"; clients map completed → match_end.
+    } else {
+      createNextRound(state.match.id);
+    }
+  }
 }
 
 export function getMatchState(matchId: string): MatchState | null {
@@ -241,9 +331,29 @@ export function getMatchState(matchId: string): MatchState | null {
 
 /**
  * Sanitized sync payload for a single client.
- * Exposes counts/aggregates only — never other players' roles or vote contents.
+ * Exposes counts/aggregates only — never other players' roles or vote contents
+ * until the reveal phase (where results are public).
  */
 export function toSyncPayload(state: MatchState, userId: string) {
+  advanceTimedPhases(state);
+
+  let phase: string;
+  if (state.currentRound) {
+    phase = state.currentRound.status;
+  } else if (state.match.status === "completed") {
+    phase = "match_end";
+  } else {
+    phase = "lobby";
+  }
+
+  const duration = getPhaseDuration(state);
+  const elapsed = (Date.now() - state.phaseStartedAt) / 1000;
+  const timeRemaining = duration > 0 ? Math.max(0, Math.ceil(duration - elapsed)) : 0;
+
+  const roundId = state.currentRound?.id;
+  const roundRoles = roundId ? (state.roles.get(roundId) ?? []) : [];
+  const roundVotes = roundId ? (state.votes.get(roundId) ?? []) : [];
+
   return {
     match: state.match,
     players: state.players,
@@ -259,12 +369,13 @@ export function toSyncPayload(state: MatchState, userId: string) {
     investigatorWins: state.investigatorWins,
     maskWins: state.maskWins,
     matchWinner: state.matchWinner,
-    votesSubmitted: state.currentRound ? (state.votes.get(state.currentRound.id)?.length ?? 0) : 0,
+    phase,
+    timeRemaining,
+    votesSubmitted: roundVotes.length,
     votesRequired: state.players.length,
-    myRole:
-      (state.currentRound ? (state.roles.get(state.currentRound.id) ?? []) : []).find(
-        (r) => r.userId === userId,
-      ) ?? null,
+    hasVoted: roundVotes.some((v) => v.voterId === userId),
+    myRole: roundRoles.find((r) => r.userId === userId) ?? null,
+    reveal: roundId ? (state.lastReveal.get(roundId) ?? null) : null,
   };
 }
 
@@ -282,7 +393,26 @@ export function createNextRound(matchId: string): MatchState | null {
 
   const nextRoundNumber = state.rounds.length + 1;
   state.currentRound = createRound(state, nextRoundNumber);
+  state.phaseStartedAt = Date.now();
   return state;
+}
+
+/**
+ * Manual force-reveal fallback (host). Resolves the round immediately and
+ * returns the stored result. Used when a client wants to skip the remaining
+ * vote timer.
+ */
+export function tallyVotes(matchId: string, roundId: string): RevealResult | null {
+  const state = matches.get(matchId);
+  if (!state) return null;
+  if (state.currentRound?.id !== roundId) return null;
+
+  // Only allow forcing if we're still in vote phase (results not yet computed)
+  if (state.currentRound.status === "vote") {
+    resolveRound(state);
+  }
+
+  return state.lastReveal.get(roundId) ?? null;
 }
 
 // Helper functions

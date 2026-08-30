@@ -9,6 +9,7 @@ import {
   tallyVotes,
   createNextRound,
   toSyncPayload,
+  advanceTimedPhases,
 } from "../game/engine.js";
 
 const router = Router();
@@ -32,14 +33,15 @@ router.post("/matches/join", (req, res) => {
   res.json({ success: true, data: { match: updated.match, players: updated.players } });
 });
 
-// Get match state
+// Get match state (raw — used for debugging; sync is the sanitized endpoint)
 router.get("/matches/:id", (req, res) => {
   const state = getMatchState(req.params.id);
   if (!state) return res.status(404).json({ success: false, error: "Match not found" });
+  advanceTimedPhases(state);
   res.json({ success: true, data: state });
 });
 
-// Sync endpoint — sanitized state for polling clients (anti-cheat)
+// Sync endpoint — sanitized, server-authoritative state for polling clients (anti-cheat)
 router.get("/matches/:id/sync", (req, res) => {
   const state = getMatchState(req.params.id);
   if (!state) return res.status(404).json({ success: false, error: "Match not found" });
@@ -64,27 +66,42 @@ router.post("/matches/:id/start", (req, res) => {
 
 // Submit vote
 router.post("/matches/:id/vote", (req, res) => {
+  const state = getMatchState(req.params.id);
+  if (!state) return res.status(404).json({ success: false, error: "Match not found" });
+  advanceTimedPhases(state);
+
   const { roundId, voterId, targetId } = req.body;
   const success = submitVote(req.params.id, roundId, voterId, targetId);
   if (!success) return res.status(400).json({ success: false, error: "Cannot vote" });
+
+  // After the vote lands, if that completes the round, advance immediately
+  advanceTimedPhases(state);
   res.json({ success: true });
 });
 
-// Tally votes and get results
+// Tally votes — manual force-reveal fallback (host)
 router.post("/matches/:id/tally", (req, res) => {
+  const state = getMatchState(req.params.id);
+  if (!state) return res.status(404).json({ success: false, error: "Match not found" });
+  advanceTimedPhases(state);
+
   const { roundId } = req.body;
   const result = tallyVotes(req.params.id, roundId);
   if (!result) return res.status(400).json({ success: false, error: "Cannot tally" });
-  res.json({ success: true, data: result });
+  res.json({ success: true, data: { reveal: result } });
 });
 
 // Create next round
 router.post("/matches/:id/next-round", (req, res) => {
-  const state = createNextRound(req.params.id);
-  if (!state) return res.status(400).json({ success: false, error: "Cannot create next round" });
+  const state = getMatchState(req.params.id);
+  if (!state) return res.status(404).json({ success: false, error: "Match not found" });
+  advanceTimedPhases(state);
+
+  const next = createNextRound(req.params.id);
+  if (!next) return res.status(400).json({ success: false, error: "Cannot create next round" });
   res.json({
     success: true,
-    data: { round: state.currentRound, roles: state.roles.get(state.currentRound?.id || "") || [] },
+    data: { round: next.currentRound, roles: next.roles.get(next.currentRound?.id || "") || [] },
   });
 });
 
