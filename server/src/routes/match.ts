@@ -8,7 +8,7 @@ import {
   submitVote,
   tallyVotes,
   createNextRound,
-} from "../game/engine";
+} from "../game/engine.js";
 
 const router = Router();
 

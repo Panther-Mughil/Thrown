@@ -1,12 +1,22 @@
+import { useEffect, useRef } from "react";
 import { useGameStore } from "../store/gameStore";
 import { motion } from "framer-motion";
 
 export default function RevealPhase() {
   const { votes, players, setPhase, setVotes, tallyVotes } = useGameStore();
+  const tallyingRef = useRef(false);
 
-  // Auto-tally on mount if votes data isn't loaded yet
+  // Tally votes once on mount if results aren't loaded yet
+  useEffect(() => {
+    if (!votes && !tallyingRef.current) {
+      tallyingRef.current = true;
+      tallyVotes().finally(() => {
+        tallyingRef.current = false;
+      });
+    }
+  }, [votes, tallyVotes]);
+
   if (!votes) {
-    tallyVotes();
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full" />

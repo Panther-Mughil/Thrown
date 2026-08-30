@@ -24,7 +24,7 @@ type CharacterName =
   | "lucky_charm"
   | "volta_agent";
 
-export interface Match {
+interface Match {
   id: string;
   hostId: string;
   roomCode: string;
@@ -37,7 +37,7 @@ export interface Match {
   endedAt?: string;
 }
 
-export interface Round {
+interface Round {
   id: string;
   matchId: string;
   roundNumber: number;
@@ -48,7 +48,7 @@ export interface Round {
   endedAt?: string;
 }
 
-export interface Role {
+interface Role {
   id: string;
   roundId: string;
   userId: string;
@@ -59,28 +59,24 @@ export interface Role {
   abilityUsed: boolean;
 }
 
-export interface Vote {
-  id: string;
-  roundId: string;
-  voterId: string;
-  targetId: string;
-  isValid: boolean;
-}
-
-export interface VoteResult {
+interface VoteResult {
   voterId: string;
   targetId: string;
   weight: number;
 }
 
-export interface RevealResult {
+interface RevealResult {
   votes: VoteResult[];
   eliminated?: { userId: string; role: Role };
   tiebreak: boolean;
   tiebreakWinner?: string;
+  roundWinner?: "investigators" | "masks";
+  matchWinner?: "investigators" | "masks";
+  investigatorWins?: number;
+  maskWins?: number;
 }
 
-const API = "http://localhost:3001/api";
+const API = "/api";
 
 interface Player {
   id: string;
@@ -103,6 +99,9 @@ interface GameState {
   scores: Record<string, number>;
   roundNumber: number;
   bestOf: number;
+  matchWinner: "investigators" | "masks" | null;
+  investigatorWins: number;
+  maskWins: number;
 
   // Actions
   setPlayer: (id: string, name: string) => void;
@@ -132,6 +131,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   scores: {},
   roundNumber: 1,
   bestOf: 5,
+  matchWinner: null,
+  investigatorWins: 0,
+  maskWins: 0,
 
   setPlayer: (id, name) => set({ playerId: id, playerName: name }),
   setPhase: (phase) => set({ phase }),
@@ -150,6 +152,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       votes: null,
       scores: {},
       roundNumber: 1,
+      matchWinner: null,
+      investigatorWins: 0,
+      maskWins: 0,
     }),
 
   createRoom: async (maxPlayers, bestOf) => {
@@ -266,7 +271,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }
       }
-      set({ votes: data.data, scores: newScores, phase: "reveal" });
+      set({
+        votes: data.data,
+        scores: newScores,
+        matchWinner: data.data.matchWinner ?? null,
+        investigatorWins: data.data.investigatorWins ?? state.investigatorWins,
+        maskWins: data.data.maskWins ?? state.maskWins,
+        phase: "reveal",
+      });
     }
   },
 

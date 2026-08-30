@@ -12,6 +12,9 @@ export interface MatchState {
   votes: Map<string, Vote[]>; // roundId -> votes
   scores: Map<string, number>;
   wins: Map<string, number>;
+  investigatorWins: number;
+  maskWins: number;
+  matchWinner: "investigators" | "masks" | null;
 }
 
 export function createMatch(
@@ -41,6 +44,9 @@ export function createMatch(
     votes: new Map(),
     scores: new Map(),
     wins: new Map(),
+    investigatorWins: 0,
+    maskWins: 0,
+    matchWinner: null,
   };
 
   matches.set(match.id, state);
@@ -175,31 +181,45 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
 
   // Tiebreak: random among tied
   if (tiebreak && eliminated) {
-    const tied = Array.from(voteCounts.entries())
-      .filter(([_, count]) => count === maxVotes)
-      .map(([playerId]) => playerId);
+    const tied = Array.from(voteCounts.entries()).flatMap(([playerId, count]) =>
+      count === maxVotes ? [playerId] : [],
+    );
     eliminated = tied[Math.floor(Math.random() * tied.length)];
   }
 
   // Get eliminated player's role
   const eliminatedRole = roles.find((r) => r.userId === eliminated);
 
-  // Update scores
+  let roundWinner: "investigators" | "masks" | null = null;
+
+  // Update scores + round wins
   if (eliminatedRole) {
     if (eliminatedRole.roleType === "mask") {
-      // Investigators win
+      // Investigators win the round
+      roundWinner = "investigators";
+      state.investigatorWins += 1;
       for (const role of roles) {
         if (role.roleType === "investigator") {
           state.scores.set(role.userId, (state.scores.get(role.userId) || 0) + 150);
         }
       }
     } else {
-      // Mask survives
+      // Mask survives → Masks win the round
+      roundWinner = "masks";
+      state.maskWins += 1;
       const maskRole = roles.find((r) => r.roleType === "mask");
       if (maskRole) {
         state.scores.set(maskRole.userId, (state.scores.get(maskRole.userId) || 0) + 200);
       }
     }
+  }
+
+  // Match win check: first side to reach majority wins
+  const winThreshold = Math.ceil(state.match.bestOf / 2);
+  if (state.investigatorWins >= winThreshold) {
+    state.matchWinner = "investigators";
+  } else if (state.maskWins >= winThreshold) {
+    state.matchWinner = "masks";
   }
 
   return {
@@ -208,6 +228,10 @@ export function tallyVotes(matchId: string, roundId: string): RevealResult | nul
       eliminated && eliminatedRole ? { userId: eliminated, role: eliminatedRole } : undefined,
     tiebreak,
     tiebreakWinner: tiebreak ? eliminated || undefined : undefined,
+    roundWinner: roundWinner ?? undefined,
+    matchWinner: state.matchWinner ?? undefined,
+    investigatorWins: state.investigatorWins,
+    maskWins: state.maskWins,
   };
 }
 
@@ -225,6 +249,7 @@ export function getMatchByRoomCode(roomCode: string): MatchState | null {
 export function createNextRound(matchId: string): MatchState | null {
   const state = matches.get(matchId);
   if (!state) return null;
+  if (state.matchWinner) return null;
 
   const nextRoundNumber = state.rounds.length + 1;
   state.currentRound = createRound(state, nextRoundNumber);

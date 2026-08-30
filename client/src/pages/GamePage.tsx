@@ -7,7 +7,7 @@ import RevealPhase from "../components/RevealPhase";
 import Scoreboard from "../components/Scoreboard";
 
 export default function GamePage() {
-  const { phase } = useGameStore();
+  const { phase, tallyVotes } = useGameStore();
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -16,10 +16,19 @@ export default function GamePage() {
       {phase === "discussion" && <DiscussionPhase />}
       {phase === "vote" && <VotePhase />}
       {phase === "waiting" && (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-xl text-zinc-400">Waiting for other players...</p>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
+            <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-6" />
+            <p className="text-xl text-zinc-300 mb-2">Waiting for other players...</p>
+            <p className="text-sm text-zinc-500 mb-6">
+              Your vote has been submitted. Once everyone has voted, reveal the results.
+            </p>
+            <button
+              onClick={tallyVotes}
+              className="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors"
+            >
+              Reveal Votes
+            </button>
           </div>
         </div>
       )}

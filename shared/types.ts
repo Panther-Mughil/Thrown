@@ -26,13 +26,13 @@ export type RoleType = "mask" | "special_investigator" | "investigator";
 export type MaskCharacter = "the_artist" | "victor";
 
 export type SpecialInvestigatorCharacter =
-  | "nova_reyes"     // Lead Investigator
-  | "mikaela"        // Protector
-  | "kate"           // Mediator
-  | "tamara"         // Anchor
-  | "dmw"            // Unshakeable Boss
-  | "auditor"        // Sees vote breakdown
-  | "lucky_charm";   // Bonus on elimination
+  | "nova_reyes" // Lead Investigator
+  | "mikaela" // Protector
+  | "kate" // Mediator
+  | "tamara" // Anchor
+  | "dmw" // Unshakeable Boss
+  | "auditor" // Sees vote breakdown
+  | "lucky_charm"; // Bonus on elimination
 
 export type InvestigatorCharacter = "volta_agent";
 
@@ -153,6 +153,10 @@ export interface RevealResult {
   eliminated?: { userId: string; role: Role };
   tiebreak: boolean;
   tiebreakWinner?: string;
+  roundWinner?: "investigators" | "masks";
+  matchWinner?: "investigators" | "masks";
+  investigatorWins?: number;
+  maskWins?: number;
 }
 
 // ── Score ──────────────────────────────────────────────────
@@ -185,19 +189,19 @@ export interface Item {
 
 export type LootboxTier = "common" | "good" | "legendary" | "mythical";
 
-export const LOOTBOX_COSTS: Record<LootboxTier, number> = {
+export const LOOTBOX_COSTS = {
   common: 1000,
   good: 5000,
   legendary: 10000,
   mythical: 50000,
-};
+} satisfies Record<LootboxTier, number>;
 
-export const LOOTBOX_PULL_RATES: Record<ItemRarity, number> = {
+export const LOOTBOX_PULL_RATES = {
   common: 0.85,
   good: 0.12,
   legendary: 0.025,
   mythical: 0.005,
-};
+} satisfies Record<ItemRarity, number>;
 
 // ── Auction ────────────────────────────────────────────────
 
@@ -241,11 +245,20 @@ export type NotificationType =
   | "marketplace_snipe"
   | "auction_end";
 
+export interface NotificationContent {
+  userId?: string;
+  matchId?: string;
+  roundId?: string;
+  message?: string;
+  bidAmount?: number;
+  itemId?: string;
+}
+
 export interface Notification {
   id: string;
   userId: string;
   type: NotificationType;
-  content: Record<string, unknown>;
+  content: NotificationContent;
   read: boolean;
   createdAt: string;
 }
@@ -308,13 +321,17 @@ export interface ServerToClientEvents {
   "match:cancelled": () => void;
   "game:phase-change": (data: { phase: GamePhase; timer?: number }) => void;
   "game:role-assigned": (data: { role: Role; clue: ClueToken }) => void;
-  "game:discussion-message": (data: { playerId: string; message: string; presetKey?: string }) => void;
+  "game:discussion-message": (data: {
+    playerId: string;
+    message: string;
+    presetKey?: string;
+  }) => void;
   "game:timer-update": (data: { timeRemaining: number }) => void;
   "game:vote-received": () => void;
   "game:reveal": (data: RevealResult) => void;
   "game:scoreboard": (data: { scores: Score[]; roundNumber: number }) => void;
   "game:match-end": (data: { winner: "investigators" | "masks"; finalScores: Score[] }) => void;
-  "error": (data: { message: string; code: string }) => void;
+  error: (data: { message: string; code: string }) => void;
 }
 
 // ── API Responses ──────────────────────────────────────────

@@ -2,14 +2,10 @@ import { useGameStore } from "../store/gameStore";
 import { motion } from "framer-motion";
 
 export default function Scoreboard() {
-  const { players, scores, match, playerId, nextRound, resetGame } = useGameStore();
+  const { players, scores, match, playerId, nextRound, resetGame, matchWinner } = useGameStore();
 
   const sorted = [...players].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
   const bestOf = match?.bestOf || 5;
-  const winThreshold = Math.ceil(bestOf / 2);
-
-  // Check if someone has won the match
-  const matchWinner = sorted.find((p) => (scores[p.id] || 0) >= winThreshold * 150);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -22,10 +18,14 @@ export default function Scoreboard() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center mb-6 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-xl"
+            className="text-center mb-6 p-4 rounded-xl border"
           >
             <p className="text-3xl mb-1">🏆</p>
-            <p className="text-lg font-bold text-yellow-400">{matchWinner.username} wins!</p>
+            <p className="text-lg font-bold">
+              {matchWinner === "investigators"
+                ? "Investigators win the match!"
+                : "The Mask wins the match!"}
+            </p>
           </motion.div>
         )}
 
@@ -59,7 +59,7 @@ export default function Scoreboard() {
         </div>
 
         <div className="text-center text-zinc-500 text-sm mb-6">
-          Best of {bestOf} &bull; Win at {winThreshold * 150} SD$
+          Best of {bestOf} &bull; First side to win {Math.ceil(bestOf / 2)} rounds takes the match
         </div>
 
         <div className="space-y-3">

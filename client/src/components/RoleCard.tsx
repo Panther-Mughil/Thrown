@@ -33,14 +33,13 @@ export default function RoleCard() {
           animate={{ rotateY: isRevealed ? 0 : 180 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
           onClick={() => setIsRevealed(true)}
-          className={`w-64 h-96 rounded-2xl p-6 cursor-pointer flex flex-col items-center justify-center mx-auto select-none ${
+          className={`w-64 h-96 rounded-2xl p-6 cursor-pointer flex flex-col items-center justify-center mx-auto select-none [perspective:1000px] [transform-style:preserve-3d] ${
             isRevealed
               ? isMask
                 ? "bg-gradient-to-br from-red-900 to-red-700 border-2 border-red-500 shadow-lg shadow-red-500/20"
                 : "bg-gradient-to-br from-blue-900 to-blue-700 border-2 border-blue-500 shadow-lg shadow-blue-500/20"
               : "bg-zinc-800 border-2 border-zinc-600 hover:border-zinc-500"
           }`}
-          style={{ perspective: "1000px", transformStyle: "preserve-3d" }}
         >
           {isRevealed ? (
             <div className="text-center backface-hidden">
