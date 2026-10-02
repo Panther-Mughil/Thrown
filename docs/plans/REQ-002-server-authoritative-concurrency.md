@@ -82,9 +82,9 @@ Server owns: timers, phase transitions, tally, scoring, win conditions. Clients 
 2. `RoleCard.tsx` — remove local 5s auto-transition; rely on server `phase`; keep flip animation; sync's `timeRemaining` not needed here.
 
 3. `DiscussionPhase.tsx` —
-    - Remove local countdown `setInterval` that calls `setPhase('vote')`.
-    - Use `timeRemaining` from store; tick locally with `useEffect` on `timeRemaining` to animate, but **never** transition.
-    - Messages stay local (prototype).
+   - Remove local countdown `setInterval` that calls `setPhase('vote')`.
+   - Use `timeRemaining` from store; tick locally with `useEffect` on `timeRemaining` to animate, but **never** transition.
+   - Messages stay local (prototype).
 
 4. `VotePhase.tsx` — render from server phase; if `hasVoted` show "Waiting for N more votes…" using `votesRequired - votesSubmitted`; submit → `submitVote(target)`.
 
